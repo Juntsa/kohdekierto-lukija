@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Luotea Kohdekierto · Lukija</title>
+<style>
+:root{
+  --havu:#0F4B4B; --havu-dk:#093838;
+  --kalkki:#E6DCD2; --kalkki-lt:#F5F0EA; --kalkki-md:#EFE7DD;
+  --asteri:#EBB9FF; --luumu:#371E30; --hiili:#1F1F1F;
+  --celadon:#96E6AA; --mulberry:#AA4678;
+  --text-mut:#5A4655;
+  --r:10px; --sh:0 1px 3px rgba(31,31,31,.10), 0 6px 18px rgba(31,31,31,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--kalkki-lt); color:var(--hiili);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:-.01em}
+a{color:var(--havu)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px 72px}
+
+/* ---------- header ---------- */
+header{background:var(--havu);color:#fff;padding:18px 0 16px;box-shadow:var(--sh)}
+header .wrap{padding-bottom:0}
+.hrow{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+header h1{font-size:19px}
+.badge{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.75}
+.hsub{font-size:13px;opacity:.8;margin-top:3px}
+
+/* ---------- intake ---------- */
+.intake{margin:18px 0 0}
+.drop{
+  border:2px dashed #C9BCB0; border-radius:var(--r); background:var(--kalkki-md);
+  padding:26px 20px; text-align:center; cursor:pointer; transition:.15s;
+}
+.drop:hover,.drop.hot{border-color:var(--havu);background:#E8F0EE}
+.drop strong{display:block;font-size:16px;margin-bottom:4px;color:var(--havu)}
+.drop span{font-size:13px;color:var(--text-mut)}
+.paste{margin-top:10px}
+.paste summary{cursor:pointer;font-size:13px;color:var(--text-mut);padding:4px 0}
+.paste textarea{width:100%;margin-top:8px;border:1px solid var(--kalkki);border-radius:8px;padding:10px;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;background:#fff}
+
+/* ---------- buttons ---------- */
+button,.btn{
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+  border:1px solid var(--havu);background:var(--havu);color:#fff;
+  padding:8px 14px;border-radius:8px;transition:.12s;
+}
+button:hover,.btn:hover{background:var(--havu-dk);border-color:var(--havu-dk)}
+button.ghost{background:transparent;color:var(--havu)}
+button.ghost:hover{background:rgba(15,75,75,.07)}
+button.sm{padding:5px 10px;font-size:12px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:16px 0 0}
+.toolbar .spacer{flex:1}
+
+/* ---------- archive chips ---------- */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+.chip{
+  display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--kalkki);
+  border-radius:999px;padding:5px 6px 5px 13px;font-size:13px;box-shadow:var(--sh);cursor:pointer;
+}
+.chip.on{border-color:var(--havu);box-shadow:0 0 0 2px rgba(15,75,75,.14),var(--sh)}
+.chip b{font-weight:650}
+.chip .meta{color:var(--text-mut);font-size:12px}
+.chip .x{border:0;background:transparent;color:var(--text-mut);padding:2px 6px;border-radius:50%;font-size:14px;line-height:1}
+.chip .x:hover{background:var(--kalkki);color:var(--mulberry)}
+.chip .light{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mut);border:1px solid var(--kalkki);border-radius:4px;padding:1px 4px}
+
+/* ---------- cards ---------- */
+.card{background:#fff;border:1px solid var(--kalkki);border-radius:var(--r);box-shadow:var(--sh);margin:16px 0;overflow:hidden}
+.card>h2{
+  font-size:15px;padding:13px 18px;border-bottom:1px solid var(--kalkki);
+  background:var(--kalkki-md);display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.card>h2 .n{color:var(--text-mut);font-weight:500;font-size:13px}
+.card .body{padding:16px 18px}
+
+/* ---------- koonti ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--kalkki)}
+.kpi{background:#fff;padding:14px 16px}
+.kpi .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mut)}
+.kpi .val{font-size:22px;font-weight:650;margin-top:3px;line-height:1.1}
+.kpi .val small{font-size:13px;font-weight:500;color:var(--text-mut)}
+
+/* ---------- kohde ---------- */
+.kohde{border:1px solid var(--kalkki);border-radius:var(--r);background:#fff;box-shadow:var(--sh);margin:16px 0;overflow:hidden}
+.kohde>summary{
+  padding:14px 18px;cursor:pointer;background:var(--kalkki-md);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;list-style:none;
+}
+.kohde>summary::-webkit-details-marker{display:none}
+.kohde>summary::before{content:"▸";color:var(--havu);font-size:12px;transition:.15s}
+.kohde[open]>summary::before{transform:rotate(90deg)}
+.kohde>summary .nm{font-weight:650;font-size:16px}
+.kohde>summary .ad{color:var(--text-mut);font-size:13px}
+.kohde>summary .sp{flex:1}
+.kohde .inner{padding:4px 18px 18px}
+
+.sect{margin:18px 0 0;padding-top:14px;border-top:1px solid var(--kalkki-lt)}
+.sect:first-child{border-top:0;padding-top:4px}
+.sect>h3{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--havu);margin-bottom:10px}
+
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;margin:0;align-items:baseline}
+dl.kv dt{color:var(--text-mut);font-size:13px;white-space:nowrap}
+dl.kv dd{margin:0;font-weight:550}
+.na{color:#9D9389;font-weight:400}
+
+.note{background:var(--kalkki-lt);border-left:3px solid var(--asteri);border-radius:0 6px 6px 0;padding:9px 12px;margin:10px 0 0;font-size:14px;white-space:pre-wrap}
+.note .lab{display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-mut);margin-bottom:2px}
+
+/* ---------- jakauma bar ---------- */
+.jak{margin:4px 0 10px}
+.jakbar{display:flex;height:22px;border-radius:6px;overflow:hidden;background:var(--kalkki);border:1px solid var(--kalkki)}
+.jakbar i{display:block;min-width:2px}
+.jaklegend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:13px}
+.jaklegend span{display:flex;align-items:center;gap:6px}
+.jaklegend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.jaklegend em{font-style:normal;color:var(--text-mut)}
+
+/* ---------- tekniset ---------- */
+table.tek{width:100%;border-collapse:collapse;font-size:14px}
+table.tek th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mut);font-weight:600;padding:0 10px 7px 0;border-bottom:1px solid var(--kalkki)}
+table.tek td{padding:7px 10px 7px 0;border-bottom:1px solid var(--kalkki-lt);vertical-align:top}
+table.tek td:first-child{font-weight:550}
+.pill{display:inline-block;font-size:11px;font-weight:650;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.on{background:#E4F7EA;color:#1A5E33}
+.pill.off{background:var(--kalkki);color:var(--text-mut)}
+.pill.sel{background:#FBE9F1;color:var(--mulberry)}
+
+/* ---------- selvitettävät ---------- */
+.flags{margin:0;padding:0;list-style:none}
+.flags li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--kalkki-lt);font-size:14px}
+.flags li:last-child{border-bottom:0}
+.flags .who{font-weight:650;min-width:150px;color:var(--havu)}
+.flags .what{flex:1}
+.empty{color:var(--text-mut);font-size:14px;padding:4px 0}
+.card.alert>h2{background:#FBE9F1;border-bottom-color:#F0D3E0}
+.card.alert>h2 .n{color:var(--mulberry)}
+
+/* ---------- kuvat ---------- */
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.gal figure{margin:0;background:var(--kalkki-lt);border:1px solid var(--kalkki);border-radius:8px;overflow:hidden;cursor:zoom-in}
+.gal img{display:block;width:100%;height:124px;object-fit:cover;image-orientation:from-image;background:var(--kalkki)}
+.gal figcaption{font-size:12px;padding:6px 8px;color:var(--text-mut);line-height:1.35}
+.gal figcaption b{color:var(--hiili);font-weight:600}
+.lb{position:fixed;inset:0;background:rgba(31,31,31,.92);display:none;z-index:99;align-items:center;justify-content:center;padding:24px;flex-direction:column;gap:14px}
+.lb.on{display:flex}
+.lb img{max-width:100%;max-height:78vh;object-fit:contain;image-orientation:from-image;border-radius:8px}
+.lb .cap{color:#fff;font-size:14px;text-align:center;max-width:720px}
+.lb .nav{display:flex;gap:10px;align-items:center}
+.lb .nav button{background:rgba(255,255,255,.14);border-color:transparent}
+.lb .nav button:hover{background:rgba(255,255,255,.26)}
+.archived{font-size:13px;color:var(--text-mut);background:var(--kalkki-lt);border:1px dashed var(--kalkki);border-radius:8px;padding:12px}
+
+footer{text-align:center;font-size:12px;color:var(--text-mut);padding:26px 16px 10px}
+.err{background:#FBE9F1;border:1px solid #E9C3D5;color:#7D2B4E;border-radius:8px;padding:10px 13px;margin:12px 0;font-size:14px}
+
+/* ---------- ohje ---------- */
+.help{margin:14px 0 0;background:#fff;border:1px solid var(--kalkki);border-radius:var(--r);box-shadow:var(--sh)}
+.help summary{cursor:pointer;padding:11px 16px;font-size:13px;font-weight:600;color:var(--havu);list-style:none}
+.help summary::-webkit-details-marker{display:none}
+.help summary::before{content:"? ";font-weight:700}
+.help .hb{padding:2px 18px 16px;font-size:14px;color:var(--text-mut)}
+.help .hb ol{margin:6px 0 0;padding-left:20px}
+.help .hb li{margin:5px 0}
+.help .hb b{color:var(--hiili)}
+
+/* ---------- vertailu ---------- */
+.cmpbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;background:var(--kalkki-md);border-bottom:1px solid var(--kalkki)}
+.cmpbar label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mut);display:block;margin-bottom:3px}
+.cmpbar select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--kalkki);border-radius:8px;background:#fff;color:var(--hiili);max-width:320px}
+.cmpbar .arrow{font-size:18px;color:var(--havu);padding-top:14px}
+
+.dtable{width:100%;border-collapse:collapse;font-size:14px}
+.dtable th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mut);font-weight:600;padding:0 12px 7px 0;border-bottom:1px solid var(--kalkki)}
+.dtable td{padding:8px 12px 8px 0;border-bottom:1px solid var(--kalkki-lt);vertical-align:top}
+.dtable tr.pr td{background:#FFF8FB}
+.dtable td.f{font-weight:550;width:32%}
+.dtable td.was{color:var(--text-mut);width:28%}
+.dtable td.was.strike{text-decoration:line-through;text-decoration-color:#C9BCB0}
+.dtable td.now{font-weight:600;color:var(--havu);width:28%}
+.dtable .tag{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--mulberry);border:1px solid #E9C3D5;border-radius:4px;padding:1px 5px;margin-left:7px;vertical-align:1px}
+.cmpkohde{border:1px solid var(--kalkki);border-radius:var(--r);background:#fff;box-shadow:var(--sh);margin:14px 0;overflow:hidden}
+.cmpkohde>h3{font-size:15px;padding:12px 18px;background:var(--kalkki-md);border-bottom:1px solid var(--kalkki);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.cmpkohde>h3 .ad{font-weight:400;font-size:13px;color:var(--text-mut)}
+.cmpkohde>h3 .sp{flex:1}
+.cmpkohde .cb{padding:14px 18px}
+.cmpkohde.uusi>h3{background:#E4F7EA;border-bottom-color:#C5E8D1}
+.cmpkohde.poistunut>h3{background:#FBE9F1;border-bottom-color:#F0D3E0}
+.cmpkohde.sama>h3{background:var(--kalkki-lt)}
+.pill.new{background:#E4F7EA;color:#1A5E33}
+.pill.gone{background:#FBE9F1;color:var(--mulberry)}
+.pill.same{background:var(--kalkki);color:var(--text-mut)}
+
+/* ---------- print ---------- */
+@media print{
+  :root{--sh:none}
+  body{background:#fff;font-size:10.5pt}
+  header{background:#fff;color:var(--hiili);border-bottom:2.5pt solid var(--havu);box-shadow:none;padding:0 0 8pt}
+  header h1{font-size:15pt;color:var(--havu)}
+  .badge,.hsub{color:var(--text-mut);opacity:1}
+  .intake,.toolbar,.chips,.lb,footer .noprint,.paste,.help,.cmpbar{display:none!important}
+  .cmpkohde{break-inside:avoid;box-shadow:none;border:1px solid #CFC5BA;margin:9pt 0}
+  .dtable tr.pr td{background:#FBF2F6}
+  .dtable td.was{text-decoration:line-through}
+  .wrap{max-width:none;padding:0}
+  .card,.kohde{break-inside:avoid;box-shadow:none;border:1px solid #CFC5BA;margin:10pt 0}
+  .kohde>summary::before{display:none}
+  .kohde{break-before:page}
+  .card.koonti+.kohde{break-before:auto}
+  .kohde .inner{display:block!important}
+  .gal{grid-template-columns:repeat(3,1fr)}
+  .gal img{height:92pt}
+  .sect{break-inside:avoid}
+  a[href]:after{content:""}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="hrow">
+      <h1>Luotea Kohdekierto</h1>
+      <span class="badge">Lukija · build 261009.3</span>
+    </div>
+    <div class="hsub">Lukee kenttälomakkeen JSON-vientitiedostot koonniksi ja tulosteeksi.</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="intake" id="intake">
+    <div class="drop" id="drop">
+      <strong>Raahaa kierrostiedostot tähän</strong>
+      <span>tai klikkaa ja valitse — useita JSON-tiedostoja kerralla</span>
+      <input type="file" id="fileIn" multiple hidden>
+    </div>
+    <details class="paste">
+      <summary>…tai liitä JSON-sisältö tekstinä</summary>
+      <textarea id="pasteIn" rows="4" placeholder='{"tyokalu":"LuoteaKohdekierto", …}'></textarea>
+      <div style="margin-top:8px"><button class="sm" id="pasteBtn">Lue liitetty</button></div>
+    </details>
+  </div>
+
+  <div id="errs"></div>
+  <div class="chips" id="chips"></div>
+
+  <details class="help">
+    <summary>Näin käytät</summary>
+    <div class="hb">
+      <ol>
+        <li>Kiertäjä lähettää kierroksen <b>JSON-tiedostona</b> (WhatsApp tai sähköposti). Tallenna se koneelle.</li>
+        <li>Raahaa tiedosto yllä olevaan laatikkoon. Voit pudottaa monta kerralla.</li>
+        <li><b>Selvitettävät ennen hinnoittelua</b> -kortti kertoo heti, mitä kiertäjältä pitää vielä kysyä.</li>
+        <li><b>Tulosta / PDF</b> tekee kierroksesta siistin tulosteen kuvineen. <b>CSV</b> aukeaa Exceliin.</li>
+        <li>Kun samasta kohteesta on useampi kierros, <b>Vertaa kierroksia</b> näyttää mikä on muuttunut.</li>
+      </ol>
+      <p style="margin:10px 0 0">Mikään ei lähde mihinkään — tiedostot luetaan vain tässä selaimessa.</p>
+    </div>
+  </details>
+
+  <div class="toolbar" id="toolbar" hidden>
+    <button id="modeKierros" class="sm">Kierros</button>
+    <button id="modeVertaa" class="ghost sm">Vertaa kierroksia</button>
+    <span style="width:10px"></span>
+    <button id="openAll" class="ghost sm">Avaa kaikki</button>
+    <button id="shutAll" class="ghost sm">Sulje kaikki</button>
+    <span class="spacer"></span>
+    <button id="csvBtn" class="ghost sm">Vie koonti CSV:nä</button>
+    <button id="printBtn" class="sm">Tulosta / PDF</button>
+  </div>
+
+  <main id="out"></main>
+</div>
+
+<div class="lb" id="lb">
+  <img id="lbImg" alt="">
+  <div class="cap" id="lbCap"></div>
+  <div class="nav">
+    <button id="lbPrev">‹ Edellinen</button>
+    <button id="lbNext">Seuraava ›</button>
+    <button id="lbClose" class="ghost" style="color:#fff;border-color:rgba(255,255,255,.4)">Sulje</button>
+  </div>
+</div>
+
+<footer>
+  <span class="noprint">Kuvat näkyvät vain tässä istunnossa ladatuista tiedostoista · arkistoon tallennetaan kierrostiedot ilman kuvia<br></span>
+  © Luotea Kiinteistöhuolto Oy · Sisäinen käyttö
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ tila ============ */
+var LS_KEY = "luotea_kohdekierto_lukija_v1";
+var rounds = [];          // [{key, meta, kierros, kuvat:[], light:bool}]
+var activeKey = null;
+var lbList = [], lbIdx = 0;
+var mode = "kierros";     // "kierros" | "vertaa"
+var cmpA = null, cmpB = null;
+
+var $ = function(id){ return document.getElementById(id); };
+var esc = function(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+};
+var has = function(v){ return v != null && String(v).trim() !== ""; };
+var txt = function(v){ return has(v) ? esc(v) : '<span class="na">—</span>'; };
+var num = function(v){ var n = parseFloat(String(v == null ? "" : v).replace(",", ".")); return isFinite(n) ? n : null; };
+var fmt = function(n, d){ return n == null ? "—" : n.toLocaleString("fi-FI", {minimumFractionDigits:d||0, maximumFractionDigits:d||0}); };
+var isSel = function(v){ return has(v) && /selvit/i.test(String(v)); };
+
+function err(msg){
+  var d = document.createElement("div");
+  d.className = "err"; d.innerHTML = esc(msg);
+  $("errs").appendChild(d);
+  setTimeout(function(){ d.remove(); }, 12000);
+}
+
+/* ============ tuonti ============ */
+function readFiles(list){
+  Array.prototype.forEach.call(list, function(f){
+    var r = new FileReader();
+    r.onerror = function(){ err("Tiedostoa ei voitu lukea: " + f.name); };
+    r.onload  = function(){ ingest(r.result, f.name); };
+    r.readAsText(f, "utf-8");
+  });
+}
+
+function ingest(raw, name){
+  var d;
+  try {
+    d = JSON.parse(String(raw).replace(/^﻿/, "").trim());
+  } catch(e){
+    err((name ? name + ": " : "") + "ei kelpaa JSONiksi — " + e.message);
+    return;
+  }
+  var pre = name ? name + ": " : "";
+  var tk = d && d.tyokalu;
+  if (has(tk) && String(tk) !== "LuoteaKohdekierto") {
+    var tuttu = { LuoteaPorraskartoitus: "Porraskartoituksen" };
+    err(pre + "tämä on " + (tuttu[tk] || ("työkalun " + esc(tk))) +
+        " vientitiedosto, ei Kohdekierron — tämä lukija ei osaa lukea sitä.");
+    return;
+  }
+  var k = d && d.kierros;
+  if (!k || !Array.isArray(k.kohteet)) {
+    err(pre + "tiedostosta puuttuu kierros/kohteet — onko tämä Kohdekierron vienti?");
+    return;
+  }
+  var key = [k.asiakas||"?", k.pvm||"?", k.kiertaja||"?"].join("|");
+  var kuvat = Array.isArray(d.kuvat) ? d.kuvat : [];
+  var perKohde = {};
+  kuvat.forEach(function(im){ var id = im.kohdeId || "?"; perKohde[id] = (perKohde[id]||0) + 1; });
+  var rec = {
+    key: key,
+    tallennettu: d.tallennettu || "",
+    build: d.build || "",
+    kierros: k,
+    kuvat: kuvat,
+    kuvaMaara: kuvat.length,
+    kuvaKohde: perKohde,
+    light: false,
+    file: name || ""
+  };
+  var i = rounds.findIndex(function(r){ return r.key === key; });
+  if (i >= 0) rounds[i] = rec; else rounds.push(rec);
+  activeKey = key;
+  save(); render();
+}
+
+/* ============ arkisto (localStorage, ilman kuvia) ============ */
+function save(){
+  try {
+    var slim = rounds.map(function(r){
+      return { key:r.key, tallennettu:r.tallennettu, build:r.build, kierros:r.kierros,
+               kuvaMaara:r.kuvaMaara||0, kuvaKohde:r.kuvaKohde||{}, file:r.file };
+    });
+    localStorage.setItem(LS_KEY, JSON.stringify(slim));
+  } catch(e){ /* kvootti täynnä tai file:// — arkisto ei pakollinen */ }
+}
+
+function load(){
+  try {
+    var s = localStorage.getItem(LS_KEY);
+    if (!s) return;
+    JSON.parse(s).forEach(function(r){
+      if (!r || !r.kierros) return;
+      rounds.push({ key:r.key, tallennettu:r.tallennettu, build:r.build, kierros:r.kierros,
+                    kuvat:[], kuvaMaara:r.kuvaMaara||0, kuvaKohde:r.kuvaKohde||{},
+                    light:true, file:r.file||"" });
+    });
+    if (rounds.length) activeKey = rounds[rounds.length-1].key;
+  } catch(e){ /* ei arkistoa */ }
+}
+
+/* ============ analyysi: selvitettävät ============ */
+function flags(ko){
+  var out = [];
+  var push = function(w){ out.push(w); };
+
+  if (!has(ko.bruttoala)) push("Bruttoala puuttuu");
+  if (!has(ko.yhteyshenkilo)) push("Yhteyshenkilö puuttuu");
+
+  var u = ko.ulko || {}, t = ko.talvi || {}, s = ko.sisa || {};
+
+  if (!has(u.pihaM2) && !has(u.pihaKoko)) push("Piha-alan koko tai m² puuttuu");
+  var j = u.jakauma || {}, sum = 0, any = false;
+  Object.keys(j).forEach(function(kk){ var p = num(j[kk] && j[kk].p); if (p != null){ sum += p; if (p > 0) any = true; } });
+  if (any && Math.abs(sum - 100) > 0.5) push("Pintajakauma " + fmt(sum,0) + " % — ei täydy 100 %:iin");
+  if (!any) push("Pintajakauma täyttämättä");
+
+  ["kone","kasi","katto"].forEach(function(f){
+    var lab = {kone:"Talvi: konetyö", kasi:"Talvi: käsityö", katto:"Talvi: kattolumet"}[f];
+    if (isSel(t[f])) push(lab + " merkitty selvitettäväksi");
+    else if (!has(t[f])) push(lab + " täyttämättä");
+  });
+
+  (s.tekniset || []).forEach(function(te){
+    if (isSel(te.on)) push("Tekninen: " + (te.nimi||"?") + " — selvitettävä");
+  });
+  (s.tekniset || []).forEach(function(te){
+    if (!has(te.on)) push("Tekninen: " + (te.nimi||"?") + " — kyllä/ei täyttämättä");
+  });
+
+  (ko.kysymykset || []).forEach(function(q){
+    var s2 = typeof q === "string" ? q : (q && (q.teksti || q.kysymys || q.q));
+    if (has(s2)) push("Avoin kysymys: " + s2);
+  });
+
+  return out;
+}
+
+/* ============ vertailu: kenttien litistys ============ */
+var JAKLAB = { asfaltti:"Asfaltti", kiveys:"Kiveys", nurmikko:"Nurmikko",
+               hiekka:"Hiekka", pensaat:"Pensaat/istutukset", muu:"Muu" };
+
+// Kentät jotka vaikuttavat suoraan hinnoitteluun
+var PRICING = /^(bruttoala|ulko\.pihaM2|ulko\.pihaKoko|ulko\.jakauma\.[a-z]+\.p|ulko\.lipputangot\.kpl|ulko\.parkki\.(aluePaikat|halliPaikat)|talvi\.(kone|kasi|katto)|tek\.[^.]+\.on)$/;
+
+function boolTxt(v){ return v === true ? "kyllä" : v === false ? "ei" : v; }
+
+// palauttaa { polku: {label, value} }
+function flatten(ko){
+  var f = {};
+  var put = function(p, label, v){
+    v = boolTxt(v);
+    f[p] = { label: label, value: has(v) ? String(v).trim() : "" };
+  };
+
+  put("nimi", "Kohteen nimi", ko.nimi);
+  put("osoite", "Osoite", ko.osoite);
+  put("kaupunki", "Kaupunki", ko.kaupunki);
+  put("yhteyshenkilo", "Yhteyshenkilö", ko.yhteyshenkilo);
+  put("bruttoala", "Bruttoala (m²)", ko.bruttoala);
+
+  var u = ko.ulko || {}, lp = u.lipputangot || {}, pk = u.parkki || {}, j = u.jakauma || {};
+  put("ulko.pihaKoko", "Piha-alueen koko", u.pihaKoko);
+  put("ulko.pihaM2", "Piha-ala (m²)", u.pihaM2);
+  put("ulko.naapuri", "Naapurirajat", u.naapuri);
+  put("ulko.huom", "Ulkoalueet: havainnot", u.huom);
+  Object.keys(j).forEach(function(k){
+    var lab = JAKLAB[k] || k, c = j[k] || {};
+    put("ulko.jakauma." + k + ".p", "Pintajakauma: " + lab + " (%)", c.p);
+    put("ulko.jakauma." + k + ".k", "Pintajakauma: " + lab + ", lisätieto", c.k);
+  });
+  put("ulko.lipputangot.kpl", "Lipputangot (kpl)", lp.kpl);
+  put("ulko.lipputangot.maassa", "Lipputanko maassa", lp.maassa);
+  put("ulko.lipputangot.seinassa", "Lipputanko seinässä", lp.seinassa);
+  put("ulko.lipputangot.katolla", "Lipputanko katolla", lp.katolla);
+  put("ulko.lipputangot.huom", "Lipputangot: huomiot", lp.huom);
+  put("ulko.parkki.aluePaikat", "Autopaikat kentällä", pk.aluePaikat);
+  put("ulko.parkki.halliPaikat", "Autopaikat hallissa", pk.halliPaikat);
+  put("ulko.parkki.halliKrs", "Hallin kerrokset", pk.halliKrs);
+  put("ulko.parkki.huom", "Pysäköinti: huomiot", pk.huom);
+
+  var t = ko.talvi || {};
+  put("talvi.kone", "Talvi: konetyö", t.kone);
+  put("talvi.koneHuom", "Talvi: konetyön huomiot", t.koneHuom);
+  put("talvi.kasi", "Talvi: käsityö", t.kasi);
+  put("talvi.kasiHuom", "Talvi: käsityön huomiot", t.kasiHuom);
+  put("talvi.katto", "Talvi: kattolumet", t.katto);
+  put("talvi.huom", "Talvi: havainnot", t.huom);
+
+  var s = ko.sisa || {};
+  put("sisa.huom", "Sisätilat: havainnot", s.huom);
+  (s.tekniset || []).forEach(function(te){
+    var nm = has(te.nimi) ? String(te.nimi).trim() : "?";
+    var slug = nm.toLowerCase().replace(/\./g, "_");
+    put("tek." + slug + ".on",    "Tekninen: " + nm,                   te.on);
+    put("tek." + slug + ".kpl",   "Tekninen: " + nm + " — kpl",        te.kpl);
+    put("tek." + slug + ".kulku", "Tekninen: " + nm + " — kulku",      te.kulku);
+  });
+
+  (ko.kysymykset || []).forEach(function(q, i){
+    var v = typeof q === "string" ? q : (q && (q.teksti || q.kysymys || q.q));
+    put("kysymys." + i, "Avoin kysymys " + (i+1), v);
+  });
+
+  return f;
+}
+
+function diffKohde(vanha, uusi){
+  var A = flatten(vanha), B = flatten(uusi);
+  var keys = Object.keys(A).concat(Object.keys(B)).filter(function(v,i,a){ return a.indexOf(v) === i; });
+  var ch = [];
+  keys.forEach(function(k){
+    var a = A[k], b = B[k];
+    var av = a ? a.value : "", bv = b ? b.value : "";
+    if (av === bv) return;
+    ch.push({
+      key: k,
+      label: (b || a).label,
+      from: av,
+      to: bv,
+      pricing: PRICING.test(k),
+      kind: !av ? "lisätty" : !bv ? "tyhjennetty" : "muuttui"
+    });
+  });
+  // hinnoitteluun vaikuttavat ensin, sitten aakkosjärjestys
+  ch.sort(function(x,y){
+    if (x.pricing !== y.pricing) return x.pricing ? -1 : 1;
+    return x.label.localeCompare(y.label, "fi");
+  });
+  return ch;
+}
+
+// kohteiden tunnistus kierrosten välillä: osoite+kaupunki, tarvittaessa + nimi
+function kohdeKeys(kohteet){
+  var base = kohteet.map(function(ko){
+    var s = [ko.osoite, ko.kaupunki].filter(has).join(", ").toLowerCase().replace(/\s+/g," ").trim();
+    return s || String(ko.nimi || "").toLowerCase().trim();
+  });
+  var count = {};
+  base.forEach(function(b){ count[b] = (count[b]||0) + 1; });
+  return base.map(function(b, i){
+    return count[b] > 1 ? b + " · " + String(kohteet[i].nimi||"").toLowerCase().trim() : b;
+  });
+}
+
+function renderVertailu(){
+  var opts = rounds.slice().sort(function(a,b){
+    return String(a.kierros.pvm||"").localeCompare(String(b.kierros.pvm||""));
+  });
+  if (opts.length < 2) {
+    return '<div class="card"><h2>Kierrosten vertailu</h2><div class="body"><div class="empty">' +
+      "Vertailuun tarvitaan vähintään kaksi kierrosta. Lataa toinen kierrostiedosto — esimerkiksi saman asiakkaan edellinen kierros." +
+      "</div></div></div>";
+  }
+  if (!cmpA || !rounds.some(function(r){ return r.key === cmpA; })) cmpA = opts[opts.length-2].key;
+  if (!cmpB || !rounds.some(function(r){ return r.key === cmpB; })) cmpB = opts[opts.length-1].key;
+
+  var sel = function(id, val){
+    return '<select id="' + id + '">' + opts.map(function(r){
+      var k = r.kierros;
+      return '<option value="' + esc(r.key) + '"' + (r.key === val ? " selected" : "") + ">" +
+        esc((k.asiakas||"?") + " · " + (k.pvm||"?") + " · " + (k.kiertaja||"?")) + "</option>";
+    }).join("") + "</select>";
+  };
+
+  var bar = '<div class="cmpbar">' +
+    '<div><label>Vanha kierros</label>' + sel("cmpA", cmpA) + "</div>" +
+    '<div class="arrow">→</div>' +
+    '<div><label>Uusi kierros</label>' + sel("cmpB", cmpB) + "</div>" +
+    "</div>";
+
+  var rA = rounds.find(function(r){ return r.key === cmpA; });
+  var rB = rounds.find(function(r){ return r.key === cmpB; });
+  if (!rA || !rB) return '<div class="card"><h2>Kierrosten vertailu</h2>' + bar + "</div>";
+
+  if (rA.key === rB.key) {
+    return '<div class="card"><h2>Kierrosten vertailu</h2>' + bar +
+      '<div class="body"><div class="empty">Valitse kaksi eri kierrosta.</div></div></div>';
+  }
+
+  var kA = rA.kierros.kohteet || [], kB = rB.kierros.kohteet || [];
+  var keyA = kohdeKeys(kA), keyB = kohdeKeys(kB);
+  var mapA = {}; keyA.forEach(function(k,i){ mapA[k] = kA[i]; });
+  var mapB = {}; keyB.forEach(function(k,i){ mapB[k] = kB[i]; });
+  var all = keyA.concat(keyB).filter(function(v,i,a){ return a.indexOf(v) === i; });
+
+  var nUusi = 0, nPois = 0, nMuut = 0, nKentat = 0, nHinta = 0;
+  var blocks = all.map(function(k){
+    var a = mapA[k], b = mapB[k];
+
+    if (!a) {
+      nUusi++;
+      var fl = flags(b);
+      return '<div class="cmpkohde uusi"><h3>' + esc(b.nimi || "Nimetön") +
+        '<span class="ad">' + esc([b.osoite,b.kaupunki].filter(has).join(", ")) + '</span><span class="sp"></span>' +
+        '<span class="pill new">uusi kohde</span></h3><div class="cb">' +
+        "<p style='margin:0 0 8px;font-size:14px;color:var(--text-mut)'>Ei ollut mukana vanhemmalla kierroksella.</p>" +
+        '<dl class="kv"><dt>Bruttoala</dt><dd>' +
+          (has(b.bruttoala) ? fmt(num(b.bruttoala),0) + " m²" : txt("")) + "</dd>" +
+        "<dt>Yhteyshenkilö</dt><dd>" + txt(b.yhteyshenkilo) + "</dd></dl>" +
+        (fl.length ? '<div class="note" style="border-left-color:var(--mulberry)"><span class="lab">Selvitettäviä</span>' +
+          esc(fl.join(" · ")) + "</div>" : "") +
+        "</div></div>";
+    }
+    if (!b) {
+      nPois++;
+      return '<div class="cmpkohde poistunut"><h3>' + esc(a.nimi || "Nimetön") +
+        '<span class="ad">' + esc([a.osoite,a.kaupunki].filter(has).join(", ")) + '</span><span class="sp"></span>' +
+        '<span class="pill gone">ei uudella kierroksella</span></h3><div class="cb">' +
+        "<p style='margin:0;font-size:14px;color:var(--text-mut)'>Kohde oli vanhemmalla kierroksella mutta puuttuu uudesta. " +
+        "Tarkista onko se poistunut sopimuksesta vai jäikö kiertämättä.</p></div></div>";
+    }
+
+    var ch = diffKohde(a, b);
+    if (!ch.length) {
+      return '<div class="cmpkohde sama"><h3>' + esc(b.nimi || "Nimetön") +
+        '<span class="ad">' + esc([b.osoite,b.kaupunki].filter(has).join(", ")) + '</span><span class="sp"></span>' +
+        '<span class="pill same">ei muutoksia</span></h3></div>';
+    }
+    nMuut++; nKentat += ch.length;
+    var hinta = ch.filter(function(c){ return c.pricing; }).length;
+    nHinta += hinta;
+
+    var rows = ch.map(function(c){
+      return "<tr" + (c.pricing ? ' class="pr"' : "") + '><td class="f">' + esc(c.label) +
+        (c.pricing ? '<span class="tag">hinnoittelu</span>' : "") + "</td>" +
+        '<td class="was' + (has(c.from) && c.from.length <= 40 ? " strike" : "") + '">' +
+          (has(c.from) ? esc(c.from) : '<span class="na">tyhjä</span>') + "</td>" +
+        '<td class="now">' + (has(c.to) ? esc(c.to) : '<span class="na" style="font-weight:400">tyhjennetty</span>') + "</td></tr>";
+    }).join("");
+
+    return '<div class="cmpkohde"><h3>' + esc(b.nimi || "Nimetön") +
+      '<span class="ad">' + esc([b.osoite,b.kaupunki].filter(has).join(", ")) + '</span><span class="sp"></span>' +
+      '<span class="pill sel">' + ch.length + " muutosta</span>" +
+      (hinta ? '<span class="pill off">joista ' + hinta + " hinnoitteluun</span>" : "") +
+      '</h3><div class="cb"><table class="dtable"><thead><tr><th>Kenttä</th><th>' +
+      esc(rA.kierros.pvm || "vanha") + "</th><th>" + esc(rB.kierros.pvm || "uusi") +
+      "</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+  }).join("");
+
+  var samat = all.length - nUusi - nPois;
+  var koonti = '<div class="kpis">' +
+    '<div class="kpi"><div class="lab">Kohteita molemmissa</div><div class="val">' + samat + "</div></div>" +
+    '<div class="kpi"><div class="lab">Muuttuneita kohteita</div><div class="val">' + nMuut + "</div></div>" +
+    '<div class="kpi"><div class="lab">Muuttuneita kenttiä</div><div class="val">' + nKentat + "</div></div>" +
+    '<div class="kpi"><div class="lab">Hinnoitteluun vaikuttavia</div><div class="val" style="color:' +
+      (nHinta ? "var(--mulberry)" : "var(--havu)") + '">' + nHinta + "</div></div>" +
+    '<div class="kpi"><div class="lab">Uusia / poistuneita</div><div class="val">' + nUusi + " / " + nPois + "</div></div>" +
+    "</div>";
+
+  return '<div class="card"><h2>Kierrosten vertailu<span class="n">· ' +
+    esc(rA.kierros.pvm || "?") + " → " + esc(rB.kierros.pvm || "?") + "</span></h2>" +
+    bar + koonti + "</div>" + blocks;
+}
+
+/* ============ renderöinti ============ */
+var JAKV = {
+  asfaltti:["Asfaltti","#4A4A52"], kiveys:["Kiveys","#8C7F73"],
+  nurmikko:["Nurmikko","#5E9E6B"], hiekka:["Hiekka","#C9A66B"],
+  pensaat:["Pensaat/istutukset","#2F7A5E"], muu:["Muu","#B9AEA3"]
+};
+
+function jakauma(j){
+  if (!j) return "";
+  var rows = [];
+  Object.keys(JAKV).forEach(function(k){
+    var cell = j[k] || {}, p = num(cell.p);
+    if (p != null && p > 0) rows.push({ k:k, lab:JAKV[k][0], col:JAKV[k][1], p:p, k2:cell.k });
+  });
+  // muut kuin tunnetut avaimet mukaan, ettei dataa katoa
+  Object.keys(j).forEach(function(k){
+    if (JAKV[k]) return;
+    var cell = j[k] || {}, p = num(cell.p);
+    if (p != null && p > 0) rows.push({ k:k, lab:k, col:"#B9AEA3", p:p, k2:cell.k });
+  });
+  if (!rows.length) return '<div class="empty">Pintajakaumaa ei ole täytetty.</div>';
+
+  var tot = rows.reduce(function(a,r){ return a + r.p; }, 0);
+  var bar = rows.map(function(r){
+    return '<i style="flex:' + r.p + ';background:' + r.col + '" title="' + esc(r.lab) + " " + r.p + ' %"></i>';
+  }).join("");
+  var leg = rows.map(function(r){
+    return '<span><i style="background:' + r.col + '"></i>' + esc(r.lab) +
+           " <b>" + fmt(r.p,0) + " %</b>" + (has(r.k2) ? ' <em>· ' + esc(r.k2) + "</em>" : "") + "</span>";
+  }).join("");
+  var warn = Math.abs(tot - 100) > 0.5
+    ? '<div class="note" style="border-left-color:var(--mulberry)"><span class="lab">Huom</span>Osuuksien summa ' + fmt(tot,0) + ' %, ei 100 %.</div>'
+    : "";
+  return '<div class="jak"><div class="jakbar">' + bar + '</div><div class="jaklegend">' + leg + "</div></div>" + warn;
+}
+
+function note(label, v){
+  if (!has(v)) return "";
+  return '<div class="note"><span class="lab">' + esc(label) + "</span>" + esc(v) + "</div>";
+}
+
+function tekniset(list){
+  if (!list || !list.length) return '<div class="empty">Teknisiä järjestelmiä ei ole kirjattu.</div>';
+  var rows = list.map(function(t){
+    var v = String(t.on || "").toLowerCase(), cls = "off", lab = has(t.on) ? t.on : "—";
+    if (/^k/.test(v) && !/^ei/.test(v)) cls = "on";
+    if (isSel(t.on)) cls = "sel";
+    if (!has(t.on)) { cls = "sel"; lab = "täyttämättä"; }
+    return "<tr><td>" + esc(t.nimi||"—") + "</td>" +
+           '<td><span class="pill ' + cls + '">' + esc(lab) + "</span></td>" +
+           "<td>" + (has(t.kpl) ? esc(t.kpl) : '<span class="na">—</span>') + "</td>" +
+           "<td>" + (has(t.kulku) ? esc(t.kulku) : '<span class="na">—</span>') + "</td></tr>";
+  }).join("");
+  var on = list.filter(function(t){ var v = String(t.on||"").toLowerCase(); return /^k/.test(v) && !/^ei/.test(v); });
+  var sum = on.length
+    ? '<div class="note" style="border-left-color:var(--celadon)"><span class="lab">Kohteessa on</span>' +
+      esc(on.map(function(t){ return t.nimi; }).join(" · ")) + "</div>"
+    : "";
+  return '<table class="tek"><thead><tr><th>Järjestelmä</th><th>On</th><th>Kpl</th><th>Kulku / sijainti</th></tr></thead><tbody>' +
+         rows + "</tbody></table>" + sum;
+}
+
+function galleria(kuvat, light, maara){
+  if (light) {
+    return maara
+      ? '<div class="archived">Tässä kierroksessa on <b>' + maara + " kuvaa</b>, mutta ne eivät ole arkistossa — " +
+        "lataa alkuperäinen JSON uudelleen nähdäksesi ne.</div>"
+      : '<div class="empty">Kuvia ei ole.</div>';
+  }
+  if (!kuvat.length) return '<div class="empty">Kuvia ei ole.</div>';
+
+  var byOsio = {};
+  kuvat.forEach(function(im){ var o = has(im.osio) ? im.osio : "Muu"; (byOsio[o] = byOsio[o] || []).push(im); });
+
+  return Object.keys(byOsio).sort().map(function(o){
+    var figs = byOsio[o].map(function(im){
+      var i = lbList.indexOf(im);
+      var aika = im.aika ? new Date(im.aika).toLocaleString("fi-FI", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+      return '<figure data-lb="' + i + '"><img src="' + esc(im.data) + '" alt="' + esc(im.teksti || o) + '" loading="lazy">' +
+             "<figcaption>" + (has(im.teksti) ? "<b>" + esc(im.teksti) + "</b><br>" : "") + esc(aika) + "</figcaption></figure>";
+    }).join("");
+    return '<div style="margin-bottom:12px"><div style="font-size:12px;color:var(--text-mut);margin-bottom:6px">' +
+           esc(o) + " · " + byOsio[o].length + ' kpl</div><div class="gal">' + figs + "</div></div>";
+  }).join("");
+}
+
+function kohdeBlock(ko, r){
+  var u = ko.ulko || {}, t = ko.talvi || {}, s = ko.sisa || {};
+  var lp = u.lipputangot || {}, pk = u.parkki || {};
+  var sijainnit = ["maassa","seinassa","katolla"].filter(function(f){ return lp[f]; })
+    .map(function(f){ return {maassa:"maassa",seinassa:"seinässä",katolla:"katolla"}[f]; }).join(", ");
+  var light = !!r.light;
+  var mine = (r.kuvat || []).filter(function(im){ return im.kohdeId === ko.id; });
+  var kMaara = light ? ((r.kuvaKohde || {})[ko.id] || 0) : mine.length;
+  var fl = flags(ko);
+
+  return '<details class="kohde" open>' +
+    '<summary><span class="nm">' + esc(ko.nimi || "Nimetön kohde") + "</span>" +
+    '<span class="ad">' + esc([ko.osoite, ko.kaupunki].filter(has).join(", ")) + "</span>" +
+    '<span class="sp"></span>' +
+    (has(ko.bruttoala) ? '<span class="ad">' + fmt(num(ko.bruttoala),0) + " m² brutto</span>" : "") +
+    (kMaara ? '<span class="ad">· ' + kMaara + " kuvaa</span>" : "") +
+    (fl.length ? '<span class="pill sel">' + fl.length + " selvitettävää</span>" : '<span class="pill on">valmis</span>') +
+    "</summary><div class='inner'>" +
+
+    '<div class="sect"><h3>Perustiedot</h3><dl class="kv">' +
+      "<dt>Osoite</dt><dd>" + txt([ko.osoite, ko.kaupunki].filter(has).join(", ")) + "</dd>" +
+      "<dt>Yhteyshenkilö</dt><dd>" + txt(ko.yhteyshenkilo) + "</dd>" +
+      "<dt>Bruttoala</dt><dd>" + (has(ko.bruttoala) ? fmt(num(ko.bruttoala),0) + " m²" : txt("")) + "</dd>" +
+    "</dl></div>" +
+
+    '<div class="sect"><h3>Ulkoalueet</h3><dl class="kv">' +
+      "<dt>Piha-alue</dt><dd>" + txt(u.pihaKoko) + (has(u.pihaM2) ? " · " + fmt(num(u.pihaM2),0) + " m²" : "") + "</dd>" +
+      "<dt>Lipputangot</dt><dd>" + (has(lp.kpl) ? esc(lp.kpl) + " kpl" : txt("")) + (sijainnit ? " (" + esc(sijainnit) + ")" : "") + "</dd>" +
+      "<dt>Autopaikat</dt><dd>" +
+        (has(pk.aluePaikat) ? esc(pk.aluePaikat) + " kentällä" : "") +
+        (has(pk.halliPaikat) ? (has(pk.aluePaikat) ? " · " : "") + esc(pk.halliPaikat) + " hallissa" : "") +
+        (has(pk.halliKrs) ? " (" + esc(pk.halliKrs) + " krs)" : "") +
+        (!has(pk.aluePaikat) && !has(pk.halliPaikat) ? txt("") : "") + "</dd>" +
+      "<dt>Naapurirajat</dt><dd>" + txt(u.naapuri) + "</dd>" +
+    "</dl>" + jakauma(u.jakauma) +
+      note("Ulkoalueet — havainnot", u.huom) + note("Lipputangot", lp.huom) + note("Pysäköinti", pk.huom) +
+    "</div>" +
+
+    '<div class="sect"><h3>Talvikunnossapito</h3><dl class="kv">' +
+      "<dt>Konetyö</dt><dd>" + txt(t.kone) + "</dd>" +
+      "<dt>Käsityö</dt><dd>" + txt(t.kasi) + "</dd>" +
+      "<dt>Kattolumet</dt><dd>" + txt(t.katto) + "</dd>" +
+    "</dl>" + note("Konetyö", t.koneHuom) + note("Käsityö", t.kasiHuom) + note("Talvi — havainnot", t.huom) + "</div>" +
+
+    '<div class="sect"><h3>Sisätilat ja tekniset järjestelmät</h3>' +
+      note("Sisätilat — havainnot", s.huom) + tekniset(s.tekniset) + "</div>" +
+
+    '<div class="sect"><h3>Kuvat</h3>' + galleria(mine, light, kMaara) + "</div>" +
+
+    (fl.length
+      ? '<div class="sect"><h3>Selvitettävät</h3><ul class="flags">' +
+        fl.map(function(f){ return "<li><span class='what'>" + esc(f) + "</span></li>"; }).join("") + "</ul></div>"
+      : "") +
+
+    "</div></details>";
+}
+
+function render(){
+  // chips
+  $("chips").innerHTML = rounds.map(function(r){
+    var k = r.kierros;
+    return '<span class="chip' + (r.key === activeKey ? " on" : "") + '" data-k="' + esc(r.key) + '">' +
+      "<b>" + esc(k.asiakas || "?") + "</b>" +
+      '<span class="meta">' + esc(k.pvm || "") + " · " + esc(k.kiertaja || "") + " · " +
+      (k.kohteet||[]).length + " kohde" + ((k.kohteet||[]).length === 1 ? "" : "tta") + "</span>" +
+      (r.light ? '<span class="light">arkisto</span>' : "") +
+      '<button class="x" data-del="' + esc(r.key) + '" title="Poista listalta">×</button></span>';
+  }).join("");
+
+  var r = rounds.find(function(x){ return x.key === activeKey; });
+  $("toolbar").hidden = !r;
+  if (!r) { $("out").innerHTML = ""; return; }
+
+  // tilapainikkeet
+  $("modeKierros").className = mode === "kierros" ? "sm" : "ghost sm";
+  $("modeVertaa").className  = mode === "vertaa"  ? "sm" : "ghost sm";
+  var cmp = mode === "vertaa";
+  $("openAll").hidden = cmp; $("shutAll").hidden = cmp; $("csvBtn").hidden = cmp;
+
+  if (cmp) { lbList = []; $("out").innerHTML = renderVertailu(); return; }
+
+  var k = r.kierros, kohteet = k.kohteet || [];
+  lbList = r.kuvat.slice();
+
+  var totAla = kohteet.reduce(function(a,ko){ var n = num(ko.bruttoala); return n == null ? a : a + n; }, 0);
+  var alaPuuttuu = kohteet.filter(function(ko){ return num(ko.bruttoala) == null; }).length;
+  var allFlags = [];
+  kohteet.forEach(function(ko){ flags(ko).forEach(function(f){ allFlags.push({nimi: ko.nimi || "Nimetön", f: f}); }); });
+
+  var tallSt = r.tallennettu
+    ? new Date(r.tallennettu).toLocaleString("fi-FI", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})
+    : "—";
+
+  var koonti =
+    '<div class="card koonti"><h2>' + esc(k.asiakas || "Kierros") +
+      '<span class="n">· kierretty ' + esc(k.pvm || "—") + " · " + esc(k.kiertaja || "—") +
+      (has(k.puhelin) ? " · " + esc(k.puhelin) : "") + "</span></h2>" +
+    '<div class="kpis">' +
+      '<div class="kpi"><div class="lab">Kohteita</div><div class="val">' + kohteet.length + "</div></div>" +
+      '<div class="kpi"><div class="lab">Bruttoala yhteensä</div><div class="val">' + fmt(totAla,0) +
+        " <small>m²</small></div>" + (alaPuuttuu ? '<div class="lab" style="color:var(--mulberry)">' + alaPuuttuu + " ilman alaa</div>" : "") + "</div>" +
+      '<div class="kpi"><div class="lab">Kuvia</div><div class="val">' + (r.light ? (r.kuvaMaara||0) : r.kuvat.length) +
+        (r.light ? ' <small>arkistossa ei kuvia</small>' : "") + "</div></div>" +
+      '<div class="kpi"><div class="lab">Selvitettäviä</div><div class="val" style="color:' +
+        (allFlags.length ? "var(--mulberry)" : "var(--havu)") + '">' + allFlags.length + "</div></div>" +
+      '<div class="kpi"><div class="lab">Lomake tallennettu</div><div class="val" style="font-size:14px;font-weight:550">' +
+        esc(tallSt) + '</div><div class="lab">build ' + esc(r.build || "?") + "</div></div>" +
+    "</div></div>";
+
+  var flagCard = allFlags.length
+    ? '<div class="card alert"><h2>Selvitettävät ennen hinnoittelua<span class="n">· ' + allFlags.length +
+      ' kohtaa</span></h2><div class="body"><ul class="flags">' +
+      allFlags.map(function(a){ return '<li><span class="who">' + esc(a.nimi) + '</span><span class="what">' + esc(a.f) + "</span></li>"; }).join("") +
+      "</ul></div></div>"
+    : '<div class="card"><h2>Selvitettävät</h2><div class="body"><div class="empty">Ei avoimia kohtia — kierros on täytetty kokonaan.</div></div></div>';
+
+  $("out").innerHTML = koonti + flagCard +
+    kohteet.map(function(ko){ return kohdeBlock(ko, r); }).join("");
+}
+
+/* ============ CSV ============ */
+function csv(){
+  var r = rounds.find(function(x){ return x.key === activeKey; });
+  if (!r) return;
+  var k = r.kierros;
+  var head = ["Asiakas","Pvm","Kiertäjä","Kohde","Osoite","Kaupunki","Yhteyshenkilö","Bruttoala m²",
+              "Piha koko","Piha m²","Asfaltti %","Kiveys %","Nurmikko %","Hiekka %","Pensaat %","Muu %",
+              "Lipputangot kpl","Talvi kone","Talvi käsi","Kattolumet","Tekniset kyllä","Selvitettäviä","Kuvia"];
+  var cell = function(v){
+    var s = String(v == null ? "" : v);
+    return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  var lines = [head.map(cell).join(";")];
+  (k.kohteet||[]).forEach(function(ko){
+    var u = ko.ulko||{}, t = ko.talvi||{}, s = ko.sisa||{}, j = u.jakauma||{};
+    var jp = function(x){ var c = j[x]||{}; return has(c.p) ? c.p : ""; };
+    var on = (s.tekniset||[]).filter(function(x){ var v = String(x.on||"").toLowerCase(); return /^k/.test(v) && !/^ei/.test(v); });
+    lines.push([k.asiakas,k.pvm,k.kiertaja,ko.nimi,ko.osoite,ko.kaupunki,ko.yhteyshenkilo,ko.bruttoala,
+      u.pihaKoko,u.pihaM2,jp("asfaltti"),jp("kiveys"),jp("nurmikko"),jp("hiekka"),jp("pensaat"),jp("muu"),
+      (u.lipputangot||{}).kpl,t.kone,t.kasi,t.katto,
+      on.map(function(x){ return x.nimi; }).join(" | "), flags(ko).length,
+      r.light ? ((r.kuvaKohde||{})[ko.id] || 0)
+              : r.kuvat.filter(function(im){ return im.kohdeId === ko.id; }).length
+    ].map(cell).join(";"));
+  });
+  var blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Kohdekierto_" + String(k.asiakas||"kierros").replace(/[^\wÀ-ɏ]+/g,"_") + "_" + (k.pvm||"") + ".csv";
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+}
+
+/* ============ lightbox ============ */
+function lbOpen(i){
+  if (!lbList.length) return;
+  lbIdx = (i + lbList.length) % lbList.length;
+  var im = lbList[lbIdx];
+  $("lbImg").src = im.data;
+  $("lbCap").textContent = [im.teksti, im.osio, im.aika ? new Date(im.aika).toLocaleString("fi-FI") : ""]
+    .filter(function(x){ return has(x); }).join(" · ") + "  (" + (lbIdx+1) + "/" + lbList.length + ")";
+  $("lb").classList.add("on");
+}
+function lbClose(){ $("lb").classList.remove("on"); $("lbImg").src = ""; }
+
+/* ============ tapahtumat ============ */
+var drop = $("drop");
+drop.addEventListener("click", function(){ $("fileIn").click(); });
+$("fileIn").addEventListener("change", function(e){ readFiles(e.target.files); e.target.value = ""; });
+["dragenter","dragover"].forEach(function(ev){
+  document.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("hot"); });
+});
+["dragleave","drop"].forEach(function(ev){
+  document.addEventListener(ev, function(e){ e.preventDefault(); if (ev === "dragleave" && e.relatedTarget) return; drop.classList.remove("hot"); });
+});
+document.addEventListener("drop", function(e){
+  e.preventDefault();
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) readFiles(e.dataTransfer.files);
+});
+$("pasteBtn").addEventListener("click", function(){
+  var v = $("pasteIn").value;
+  if (!has(v)) { err("Liitä ensin JSON-sisältö."); return; }
+  ingest(v, "liitetty");
+  $("pasteIn").value = "";
+});
+
+$("chips").addEventListener("click", function(e){
+  var del = e.target.closest("[data-del]");
+  if (del) {
+    e.stopPropagation();
+    var dk = del.getAttribute("data-del");
+    rounds = rounds.filter(function(r){ return r.key !== dk; });
+    if (activeKey === dk) activeKey = rounds.length ? rounds[rounds.length-1].key : null;
+    save(); render(); return;
+  }
+  var chip = e.target.closest("[data-k]");
+  if (chip) { activeKey = chip.getAttribute("data-k"); render(); }
+});
+
+$("out").addEventListener("click", function(e){
+  var f = e.target.closest("[data-lb]");
+  if (f) lbOpen(parseInt(f.getAttribute("data-lb"), 10));
+});
+
+$("modeKierros").addEventListener("click", function(){ mode = "kierros"; render(); });
+$("modeVertaa").addEventListener("click", function(){ mode = "vertaa"; render(); });
+$("out").addEventListener("change", function(e){
+  if (e.target.id === "cmpA") { cmpA = e.target.value; render(); }
+  if (e.target.id === "cmpB") { cmpB = e.target.value; render(); }
+});
+
+$("openAll").addEventListener("click", function(){
+  document.querySelectorAll("details.kohde").forEach(function(d){ d.open = true; });
+});
+$("shutAll").addEventListener("click", function(){
+  document.querySelectorAll("details.kohde").forEach(function(d){ d.open = false; });
+});
+$("printBtn").addEventListener("click", function(){
+  document.querySelectorAll("details.kohde").forEach(function(d){ d.open = true; });
+  setTimeout(function(){ window.print(); }, 120);
+});
+$("csvBtn").addEventListener("click", csv);
+
+$("lbClose").addEventListener("click", lbClose);
+$("lb").addEventListener("click", function(e){ if (e.target === $("lb")) lbClose(); });
+$("lbPrev").addEventListener("click", function(e){ e.stopPropagation(); lbOpen(lbIdx - 1); });
+$("lbNext").addEventListener("click", function(e){ e.stopPropagation(); lbOpen(lbIdx + 1); });
+document.addEventListener("keydown", function(e){
+  if (!$("lb").classList.contains("on")) return;
+  if (e.key === "Escape") lbClose();
+  if (e.key === "ArrowLeft") lbOpen(lbIdx - 1);
+  if (e.key === "ArrowRight") lbOpen(lbIdx + 1);
+});
+
+/* ============ käynnistys ============ */
+load();
+render();
+
+})();
+</script>
+</body>
+</html>
