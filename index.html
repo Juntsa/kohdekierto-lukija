@@ -113,6 +113,9 @@ dl.kv dd{margin:0;font-weight:550}
 .note{background:var(--kalkki-lt);border-left:3px solid var(--asteri);border-radius:0 6px 6px 0;padding:9px 12px;margin:10px 0 0;font-size:14px;white-space:pre-wrap}
 .note .lab{display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-mut);margin-bottom:2px}
 
+/* ---------- kierrosmuistio (261019.1) ---------- */
+.muistio{background:#FBFAF7;border:1px solid var(--kalkki);border-left:3px solid var(--havu);border-radius:0 8px 8px 0;padding:12px 14px;font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+
 /* ---------- jakauma bar ---------- */
 .jak{margin:4px 0 10px}
 .jakbar{display:flex;height:22px;border-radius:6px;overflow:hidden;background:var(--kalkki);border:1px solid var(--kalkki)}
@@ -217,6 +220,8 @@ footer{text-align:center;font-size:12px;color:var(--text-mut);padding:26px 16px 
   .gal{grid-template-columns:repeat(3,1fr)}
   .gal img{height:92pt}
   .sect{break-inside:avoid}
+  .sect.muistioS{break-inside:auto}
+  .muistio{background:#fff}
   a[href]:after{content:""}
 }
 </style>
@@ -227,7 +232,7 @@ footer{text-align:center;font-size:12px;color:var(--text-mut);padding:26px 16px 
   <div class="wrap">
     <div class="hrow">
       <h1>Luotea Kohdekierto</h1>
-      <span class="badge">Lukija · build 261009.3</span>
+      <span class="badge">Lukija · build 261019.1</span>
     </div>
     <div class="hsub">Lukee kenttälomakkeen JSON-vientitiedostot koonniksi ja tulosteeksi.</div>
   </div>
@@ -260,6 +265,7 @@ footer{text-align:center;font-size:12px;color:var(--text-mut);padding:26px 16px 
         <li><b>Selvitettävät ennen hinnoittelua</b> -kortti kertoo heti, mitä kiertäjältä pitää vielä kysyä.</li>
         <li><b>Tulosta / PDF</b> tekee kierroksesta siistin tulosteen kuvineen. <b>CSV</b> aukeaa Exceliin.</li>
         <li>Kun samasta kohteesta on useampi kierros, <b>Vertaa kierroksia</b> näyttää mikä on muuttunut.</li>
+        <li>Kiertäjän liittämä tai sanelema <b>Kierrosmuistio</b> näkyy kohteen kortin lopussa sellaisenaan (lomake build 261019.1 alkaen).</li>
       </ol>
       <p style="margin:10px 0 0">Mikään ei lähde mihinkään — tiedostot luetaan vain tässä selaimessa.</p>
     </div>
@@ -504,6 +510,7 @@ function flatten(ko){
     var v = typeof q === "string" ? q : (q && (q.teksti || q.kysymys || q.q));
     put("kysymys." + i, "Avoin kysymys " + (i+1), v);
   });
+  put("muistio", "Kierrosmuistio", typeof ko.muistio === "string" ? ko.muistio : "");
 
   return f;
 }
@@ -758,6 +765,7 @@ function kohdeBlock(ko, r){
     '<span class="sp"></span>' +
     (has(ko.bruttoala) ? '<span class="ad">' + fmt(num(ko.bruttoala),0) + " m² brutto</span>" : "") +
     (kMaara ? '<span class="ad">· ' + kMaara + " kuvaa</span>" : "") +
+    (has(ko.muistio) ? '<span class="ad">· muistio</span>' : "") +
     (fl.length ? '<span class="pill sel">' + fl.length + " selvitettävää</span>" : '<span class="pill on">valmis</span>') +
     "</summary><div class='inner'>" +
 
@@ -794,6 +802,12 @@ function kohdeBlock(ko, r){
     (fl.length
       ? '<div class="sect"><h3>Selvitettävät</h3><ul class="flags">' +
         fl.map(function(f){ return "<li><span class='what'>" + esc(f) + "</span></li>"; }).join("") + "</ul></div>"
+      : "") +
+
+    // Kierrosmuistio (lomake 261019.1 →): näytetään sellaisenaan, rivinvaihdot säilyttäen
+    (has(ko.muistio)
+      ? '<div class="sect muistioS"><h3>Kierrosmuistio</h3><div class="muistio">' +
+        esc(String(ko.muistio).replace(/\r\n?/g, "\n").trim()) + "</div></div>"
       : "") +
 
     "</div></details>";
@@ -869,7 +883,7 @@ function csv(){
   var k = r.kierros;
   var head = ["Asiakas","Pvm","Kiertäjä","Kohde","Osoite","Kaupunki","Yhteyshenkilö","Bruttoala m²",
               "Piha koko","Piha m²","Asfaltti %","Kiveys %","Nurmikko %","Hiekka %","Pensaat %","Muu %",
-              "Lipputangot kpl","Talvi kone","Talvi käsi","Kattolumet","Tekniset kyllä","Selvitettäviä","Kuvia"];
+              "Lipputangot kpl","Talvi kone","Talvi käsi","Kattolumet","Tekniset kyllä","Selvitettäviä","Kuvia","Kierrosmuistio"];
   var cell = function(v){
     var s = String(v == null ? "" : v);
     return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -884,7 +898,8 @@ function csv(){
       (u.lipputangot||{}).kpl,t.kone,t.kasi,t.katto,
       on.map(function(x){ return x.nimi; }).join(" | "), flags(ko).length,
       r.light ? ((r.kuvaKohde||{})[ko.id] || 0)
-              : r.kuvat.filter(function(im){ return im.kohdeId === ko.id; }).length
+              : r.kuvat.filter(function(im){ return im.kohdeId === ko.id; }).length,
+      has(ko.muistio) ? String(ko.muistio).split(/\r?\n/).map(function(x){ return x.trim(); }).filter(Boolean).join(" / ") : ""
     ].map(cell).join(";"));
   });
   var blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
